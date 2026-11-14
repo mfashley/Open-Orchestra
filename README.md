@@ -1,52 +1,16 @@
-# Open Orchestra
+# React + Vite
 
-**Anyone can join the band.**
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Open Orchestra is a collaborative web app where people create music together from their own devices—without needing an instrument or prior musical experience.
+Currently, two official plugins are available:
 
-Built for HackPrinceton 2026.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Inspiration
+## React Compiler
 
-Making music together often requires instruments, equipment, and practice before everyone can participate. Open Orchestra explores a simpler starting point: join a room, choose a musical role, and contribute to a shared performance.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-The goal is to make collaborative music-making more approachable through simple controls and musical guidance.
+## Expanding the ESLint configuration
 
-## Planned Experience
-
-1. A host creates a room on a laptop.
-2. Players join from their phones or computers using a QR code or room code.
-3. Each player chooses a role: drums, bass, chords, or melody.
-4. Players use large buttons or keyboard controls to contribute.
-5. The host computer plays the combined music and displays a visual stage that responds to the ensemble.
-
-Musical assistance will help contributions stay in key and align with the beat while giving players control over what they create.
-
-## Planned Features
-
-- Realtime multiplayer music rooms
-- QR code and room-code joining
-- Four complementary musical roles
-- Large, labeled controls and keyboard input
-- Beat-aligned playback and notes within a shared scale
-- A shared visual stage showing each player's contributions
-
-## Planned Technology
-
-- **React:** User interface
-- **JavaScript:** Application logic
-- **Browser audio:** Sound generation and playback
-- **Realtime backend:** Room management and player communication
-
-## Purpose
-
-Open Orchestra aims to lower barriers related to musical experience, equipment, and complex controls.
-This prototype will explore approachable input options. Broader accessibility will require testing and feedback from people with different access needs.
-
-## Future Ideas
-
-- Additional input methods
-- More instruments and musical styles
-- Guided activities for beginner ensembles
-- Recording and replaying group performances
-- Accessibility improvements informed by user testing
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
