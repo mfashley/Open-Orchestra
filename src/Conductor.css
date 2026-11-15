@@ -1,0 +1,40 @@
+.conductor-panel {
+  padding: 20px;
+  margin: 24px 0;
+  border: 1px solid #d1b58b;
+  border-radius: 10px;
+  background: #fff8ec;
+}
+.conductor-panel .conductor-kicker {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-top: 0;
+}
+.conductor-panel h2 {
+  margin: 8px 0;
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 26px;
+}
+.conductor-panel p {
+  font-size: 13px;
+}
+.conductor-panel textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px;
+  color: #360d1c;
+  background: #fffdf8;
+  border: 1px solid #bfa98e;
+  border-radius: 6px;
+  font: inherit;
+  line-height: 1.6;
+}
+.conductor-panel textarea:focus-visible {
+  outline: 3px solid #791d3e;
+  outline-offset: 3px;
+}
+.conductor-selection {
+  border-top: 1px solid #ddcbb6;
+  padding-top: 16px;
+}

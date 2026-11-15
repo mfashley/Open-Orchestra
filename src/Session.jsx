@@ -1,3 +1,4 @@
+import Conductor from "./Conductor";
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import * as Tone from "tone";
@@ -27,7 +28,7 @@ export default function Session({ mode, onBack }) {
   const clockRef = useRef({ offset: 0, best: Infinity });
   const [octave, setOctave] = useState(4);
   const [pressed, setPressed] = useState([]);
-  const notes = steps.map((step) => (octave + 1) * 12 + step);
+
 
   function releaseAll() {
     heldRef.current.clear();
@@ -55,6 +56,9 @@ export default function Session({ mode, onBack }) {
   const [joined, setJoined] = useState(false);
   const [players, setPlayers] = useState([]);
   const [instrument, setInstrument] = useState("piano");
+  const notes = ensemble?.arrangement?.parts[instrument]?.playableNotes ||
+    steps.map((step) => (octave + 1) * 12 + step);
+  const [selection, setSelection] = useState({ title: "First Light", source: "prepared" });
   const [soundReady, setSoundReady] = useState(false);
   const [starting, setStarting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -78,6 +82,7 @@ export default function Session({ mode, onBack }) {
     }
     const syncTimer = setInterval(syncClock, 5000);
     socket.on("ensemble", setEnsemble);
+    socket.on("selection", setSelection);
 
     socket.on("connect", () => {
       clockRef.current = { offset: 0, best: Infinity };
@@ -233,6 +238,9 @@ export default function Session({ mode, onBack }) {
             setInstrument("piano");
             setOctave(4);
             setJoined(true);
+            socketRef.current?.timeout(3000).emit("get-selection", (error, state) => {
+              if (!error && state) setSelection(state);
+            });
             socketRef.current?.timeout(3000).emit("get-ensemble", (error, state) => {
               if (!error) setEnsemble(state);
             });
@@ -289,13 +297,14 @@ export default function Session({ mode, onBack }) {
   const guide = guideAt(ensemble, instrument, now + clockRef.current.offset);
   const guidePanel = (
     <GuidedEnsemble
+      selection={selection}
       session={ensemble}
       guide={guide}
       host={mode === "host"}
       ready={soundReady && connected}
       noteNames={notes.map((midi) => Tone.Frequency(midi, "midi").toNote())}
       onStart={() => socketRef.current?.timeout(5000).emit("start-ensemble", (error, result) => {
-        if (error || !result?.ok) setError("Couldn't start the piece. Check your connection.");
+        if (error || !result?.ok) setError(result?.error || "Couldn't start the piece. Check your connection.");
       })}
       onStop={() => socketRef.current?.emit("stop-ensemble")}
     />
@@ -375,6 +384,7 @@ export default function Session({ mode, onBack }) {
               <p>Sound enabled · Keep this tab open.</p>
             )}
 
+            <Conductor socket={socketRef.current} selection={selection} playing={!!ensemble} connected={connected} players={players} />
             {guidePanel}
             <h2>Musicians · {players.length}</h2>
 
@@ -411,6 +421,9 @@ export default function Session({ mode, onBack }) {
                 ))}
               </select>
             </label>
+            {ensemble && !ensemble.arrangement?.parts[instrument] && (
+              <p>This piece has no {instruments[instrument].name} part. Choose an instrument that was connected when the host composed it, or play freely.</p>
+            )}
 
             {guidePanel}
             <div className="octave-controls">
@@ -454,7 +467,7 @@ export default function Session({ mode, onBack }) {
                   }}
                 >
                   <span>{Tone.Frequency(midi, "midi").toNote()}</span>
-                  <small>{"ASDFGHJK"[index]}</small>
+                  <small>{"ASDFGHJK"[index] || ""}</small>
                 </button>
               ))}
             </div>
