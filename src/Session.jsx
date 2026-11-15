@@ -10,12 +10,32 @@ import { instruments } from "./instruments";
 const roles = Object.keys(instruments);
 
 const steps = [0, 2, 4, 5, 7, 9, 11, 12];
-const keyCodes = ["KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK"];
+const keyCodes = [
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "KeyF",
+  "KeyG",
+  "KeyH",
+  "KeyJ",
+  "KeyK",
+];
 const octaves = {
-  piano: [3, 4, 5], violin: [4, 5, 6], flute: [5, 6],
-  trumpet: [3, 4, 5], cello: [2, 3, 4], xylophone: [4, 5, 6],
+  piano: [3, 4, 5],
+  violin: [4, 5, 6],
+  flute: [5, 6],
+  trumpet: [3, 4, 5],
+  cello: [2, 3, 4],
+  xylophone: [4, 5, 6],
 };
-const defaultOctave = { piano: 4, violin: 4, flute: 5, trumpet: 4, cello: 2, xylophone: 5 };
+const defaultOctave = {
+  piano: 4,
+  violin: 4,
+  flute: 5,
+  trumpet: 4,
+  cello: 2,
+  xylophone: 5,
+};
 
 export default function Session({ mode, onBack }) {
   const socketRef = useRef(null);
@@ -28,7 +48,6 @@ export default function Session({ mode, onBack }) {
   const clockRef = useRef({ offset: 0, best: Infinity });
   const [octave, setOctave] = useState(4);
   const [pressed, setPressed] = useState([]);
-
 
   function releaseAll() {
     heldRef.current.clear();
@@ -56,9 +75,13 @@ export default function Session({ mode, onBack }) {
   const [joined, setJoined] = useState(false);
   const [players, setPlayers] = useState([]);
   const [instrument, setInstrument] = useState("piano");
-  const notes = ensemble?.arrangement?.parts[instrument]?.playableNotes ||
+  const notes =
+    ensemble?.arrangement?.parts[instrument]?.playableNotes ||
     steps.map((step) => (octave + 1) * 12 + step);
-  const [selection, setSelection] = useState({ title: "First Light", source: "prepared" });
+  const [selection, setSelection] = useState({
+    title: "First Light",
+    source: "prepared",
+  });
   const [soundReady, setSoundReady] = useState(false);
   const [starting, setStarting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -76,7 +99,10 @@ export default function Session({ mode, onBack }) {
         const received = Date.now();
         const roundTrip = received - sent;
         if (roundTrip <= clockRef.current.best) {
-          clockRef.current = { best: roundTrip, offset: serverTime - (sent + received) / 2 };
+          clockRef.current = {
+            best: roundTrip,
+            offset: serverTime - (sent + received) / 2,
+          };
         }
       });
     }
@@ -138,7 +164,8 @@ export default function Session({ mode, onBack }) {
       owners.delete(`${event.id}:${event.voice}`);
       if (!owners.size) {
         engineRef.current?.[event.instrument]?.triggerRelease(
-          Tone.Frequency(event.midi, "midi").toNote(), Tone.now()
+          Tone.Frequency(event.midi, "midi").toNote(),
+          Tone.now(),
         );
         soundingRef.current.delete(key);
       }
@@ -238,12 +265,16 @@ export default function Session({ mode, onBack }) {
             setInstrument("piano");
             setOctave(4);
             setJoined(true);
-            socketRef.current?.timeout(3000).emit("get-selection", (error, state) => {
-              if (!error && state) setSelection(state);
-            });
-            socketRef.current?.timeout(3000).emit("get-ensemble", (error, state) => {
-              if (!error) setEnsemble(state);
-            });
+            socketRef.current
+              ?.timeout(3000)
+              .emit("get-selection", (error, state) => {
+                if (!error && state) setSelection(state);
+              });
+            socketRef.current
+              ?.timeout(3000)
+              .emit("get-ensemble", (error, state) => {
+                if (!error) setEnsemble(state);
+              });
           }
         },
       );
@@ -258,15 +289,32 @@ export default function Session({ mode, onBack }) {
 
   useEffect(() => {
     function down(event) {
-      if (mode !== "join" || !joined || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-      if (event.target.closest?.("input, select, textarea, [contenteditable=true]")) return;
+      if (
+        mode !== "join" ||
+        !joined ||
+        event.repeat ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      )
+        return;
+      if (
+        event.target.closest?.(
+          "input, select, textarea, [contenteditable=true]",
+        )
+      )
+        return;
       const index = keyCodes.indexOf(event.code);
       if (index < 0) return;
       event.preventDefault();
       startNote(`key-${event.code}`, notes[index]);
     }
-    function up(event) { stopNote(`key-${event.code}`); }
-    function hidden() { if (document.hidden) releaseAll(); }
+    function up(event) {
+      stopNote(`key-${event.code}`);
+    }
+    function hidden() {
+      if (document.hidden) releaseAll();
+    }
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     window.addEventListener("blur", releaseAll);
@@ -297,15 +345,24 @@ export default function Session({ mode, onBack }) {
   const guide = guideAt(ensemble, instrument, now + clockRef.current.offset);
   const guidePanel = (
     <GuidedEnsemble
+      instrument={instrument}
       selection={selection}
       session={ensemble}
       guide={guide}
       host={mode === "host"}
       ready={soundReady && connected}
       noteNames={notes.map((midi) => Tone.Frequency(midi, "midi").toNote())}
-      onStart={() => socketRef.current?.timeout(5000).emit("start-ensemble", (error, result) => {
-        if (error || !result?.ok) setError(result?.error || "Couldn't start the piece. Check your connection.");
-      })}
+      onStart={() =>
+        socketRef.current
+          ?.timeout(5000)
+          .emit("start-ensemble", (error, result) => {
+            if (error || !result?.ok)
+              setError(
+                result?.error ||
+                  "Couldn't start the piece. Check your connection.",
+              );
+          })
+      }
       onStop={() => socketRef.current?.emit("stop-ensemble")}
     />
   );
@@ -384,7 +441,13 @@ export default function Session({ mode, onBack }) {
               <p>Sound enabled · Keep this tab open.</p>
             )}
 
-            <Conductor socket={socketRef.current} selection={selection} playing={!!ensemble} connected={connected} players={players} />
+            <Conductor
+              socket={socketRef.current}
+              selection={selection}
+              playing={!!ensemble}
+              connected={connected}
+              players={players}
+            />
             {guidePanel}
             <h2>Musicians · {players.length}</h2>
 
@@ -422,18 +485,34 @@ export default function Session({ mode, onBack }) {
               </select>
             </label>
             {ensemble && !ensemble.arrangement?.parts[instrument] && (
-              <p>This piece has no {instruments[instrument].name} part. Choose an instrument that was connected when the host composed it, or play freely.</p>
+              <p>
+                This piece has no {instruments[instrument].name} part. Choose an
+                instrument that was connected when the host composed it, or play
+                freely.
+              </p>
             )}
 
             {guidePanel}
             <div className="octave-controls">
-              <button disabled={!!ensemble || octave === octaves[instrument][0]} onClick={() => {
-                releaseAll(); setOctave((value) => value - 1);
-              }}>− Octave</button>
+              <button
+                disabled={!!ensemble || octave === octaves[instrument][0]}
+                onClick={() => {
+                  releaseAll();
+                  setOctave((value) => value - 1);
+                }}
+              >
+                − Octave
+              </button>
               <span aria-live="polite">Octave {octave}</span>
-              <button disabled={!!ensemble || octave === octaves[instrument].at(-1)} onClick={() => {
-                releaseAll(); setOctave((value) => value + 1);
-              }}>+ Octave</button>
+              <button
+                disabled={!!ensemble || octave === octaves[instrument].at(-1)}
+                onClick={() => {
+                  releaseAll();
+                  setOctave((value) => value + 1);
+                }}
+              >
+                + Octave
+              </button>
             </div>
 
             <div className="room-pads performance-pads">
@@ -444,7 +523,9 @@ export default function Session({ mode, onBack }) {
                   className={[
                     pressed.includes(midi) ? "note-held" : "",
                     guide?.active.includes(index) ? "guide-now" : "",
-                    !guide?.active.length && guide?.next.includes(index) ? "guide-next" : "",
+                    !guide?.active.length && guide?.next.includes(index)
+                      ? "guide-next"
+                      : "",
                   ].join(" ")}
                   aria-label={`Play ${Tone.Frequency(midi, "midi").toNote()}`}
                   onPointerDown={(event) => {
@@ -454,9 +535,15 @@ export default function Session({ mode, onBack }) {
                     event.currentTarget.setPointerCapture(event.pointerId);
                     startNote(`pointer-${event.pointerId}`, midi);
                   }}
-                  onPointerUp={(event) => stopNote(`pointer-${event.pointerId}`)}
-                  onPointerCancel={(event) => stopNote(`pointer-${event.pointerId}`)}
-                  onLostPointerCapture={(event) => stopNote(`pointer-${event.pointerId}`)}
+                  onPointerUp={(event) =>
+                    stopNote(`pointer-${event.pointerId}`)
+                  }
+                  onPointerCancel={(event) =>
+                    stopNote(`pointer-${event.pointerId}`)
+                  }
+                  onLostPointerCapture={(event) =>
+                    stopNote(`pointer-${event.pointerId}`)
+                  }
                   onClick={(event) => {
                     // Support assistive activation without pointer/key events.
                     if (event.detail === 0 && !heldRef.current.size) {
@@ -471,8 +558,12 @@ export default function Session({ mode, onBack }) {
                 </button>
               ))}
             </div>
-            <p>Hold notes. Use multiple fingers for chords, or A S D F G H J K.</p>
-            <button className="back-button" onClick={releaseAll}>Release all notes</button>
+            <p>
+              Hold notes. Use multiple fingers for chords, or A S D F G H J K.
+            </p>
+            <button className="back-button" onClick={releaseAll}>
+              Release all notes
+            </button>
           </>
         )}
 

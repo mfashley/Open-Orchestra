@@ -1,3 +1,4 @@
+import SheetMusic from "./SheetMusic";
 import "./GuidedEnsemble.css";
 
 export default function GuidedEnsemble({
@@ -9,6 +10,7 @@ export default function GuidedEnsemble({
   onStop,
   noteNames,
   selection,
+  instrument,
 }) {
   return (
     <section className="guide-panel" aria-label="Guided ensemble">
@@ -59,6 +61,13 @@ export default function GuidedEnsemble({
                 </span>
               ))}
             </div>
+            {!host && (
+              <SheetMusic
+                arrangement={session.arrangement}
+                instrument={instrument}
+                guide={guide}
+              />
+            )}
             <div className="guide-instruction">
               {guide.count
                 ? `Count in: ${guide.count}`
