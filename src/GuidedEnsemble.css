@@ -1,0 +1,83 @@
+.guide-panel {
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid #c6a878;
+  border-radius: 10px;
+  background: #f7ead5;
+}
+.guide-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.guide-panel .guide-kicker {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin: 0 0 8px;
+}
+.guide-panel h2 {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 24px;
+}
+.guide-control {
+  padding: 12px 16px;
+  border: 1px solid #360d1c;
+  border-radius: 6px;
+  background: #360d1c;
+  color: #fff4e3;
+}
+.guide-meta,
+.guide-footnote {
+  font-size: 12px;
+}
+.guide-beats {
+  display: flex;
+  gap: 10px;
+  margin: 16px 0;
+}
+.guide-beats span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #bfa98e;
+  border-radius: 50%;
+}
+.guide-beats .beat-current {
+  background: #360d1c;
+  color: #fff4e3;
+}
+.guide-instruction {
+  font-size: 20px;
+  font-weight: 600;
+  min-height: 48px;
+}
+.guide-progress {
+  height: 4px;
+  background: #dfceb5;
+  overflow: hidden;
+  margin-top: 18px;
+}
+.guide-progress span {
+  display: block;
+  height: 100%;
+  background: #791d3e;
+}
+.performance-pads button.guide-next {
+  outline: 3px solid #aa7223;
+  outline-offset: 2px;
+}
+.performance-pads button.guide-now {
+  background: #671b34;
+  color: #fff4e3;
+  border-color: #671b34;
+}
+.performance-pads button.guide-now::after {
+  content: "PLAY";
+  font-size: 10px;
+  letter-spacing: 1px;
+}

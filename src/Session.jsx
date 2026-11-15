@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import * as Tone from "tone";
 import "./Session.css";
+import GuidedEnsemble from "./GuidedEnsemble";
+import { guideAt, DEFAULT_OCTAVE } from "./ensemble";
 import { instruments } from "./instruments";
 
 const roles = Object.keys(instruments);
@@ -20,6 +22,9 @@ export default function Session({ mode, onBack }) {
   const startingRef = useRef(false);
   const heldRef = useRef(new Map());
   const soundingRef = useRef(new Map());
+  const [ensemble, setEnsemble] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const clockRef = useRef({ offset: 0, best: Infinity });
   const [octave, setOctave] = useState(4);
   const [pressed, setPressed] = useState([]);
   const notes = steps.map((step) => (octave + 1) * 12 + step);
@@ -59,8 +64,24 @@ export default function Session({ mode, onBack }) {
   useEffect(() => {
     const socket = io(`http://${window.location.hostname}:3001`);
     socketRef.current = socket;
+    function syncClock() {
+      if (!socket.connected) return;
+      const sent = Date.now();
+      socket.timeout(3000).emit("clock", (error, serverTime) => {
+        if (error || !Number.isFinite(serverTime)) return;
+        const received = Date.now();
+        const roundTrip = received - sent;
+        if (roundTrip <= clockRef.current.best) {
+          clockRef.current = { best: roundTrip, offset: serverTime - (sent + received) / 2 };
+        }
+      });
+    }
+    const syncTimer = setInterval(syncClock, 5000);
+    socket.on("ensemble", setEnsemble);
 
     socket.on("connect", () => {
+      clockRef.current = { offset: 0, best: Infinity };
+      syncClock();
       setConnected(true);
       setError("");
     });
@@ -74,6 +95,7 @@ export default function Session({ mode, onBack }) {
       setPressed([]);
       soundingRef.current.clear();
       for (const role of roles) engineRef.current?.[role]?.releaseAll();
+      setEnsemble(null);
       setConnected(false);
       setJoined(false);
       setPlayers([]);
@@ -87,6 +109,7 @@ export default function Session({ mode, onBack }) {
       setPressed([]);
       setJoined(false);
       setPlayers([]);
+      setEnsemble(null);
       setError("The host closed the session.");
     });
 
@@ -117,6 +140,7 @@ export default function Session({ mode, onBack }) {
     });
 
     return () => {
+      clearInterval(syncTimer);
       socket.disconnect();
       socketRef.current = null;
 
@@ -209,6 +233,9 @@ export default function Session({ mode, onBack }) {
             setInstrument("piano");
             setOctave(4);
             setJoined(true);
+            socketRef.current?.timeout(3000).emit("get-ensemble", (error, state) => {
+              if (!error) setEnsemble(state);
+            });
           }
         },
       );
@@ -245,6 +272,34 @@ export default function Session({ mode, onBack }) {
       document.removeEventListener("visibilitychange", hidden);
     };
   });
+
+  useEffect(() => {
+    releaseAll();
+    if (ensemble) setOctave(DEFAULT_OCTAVE[instrument]);
+    // A shared start time drives visual guidance, not automatic playback.
+  }, [ensemble, instrument]);
+
+  useEffect(() => {
+    if (!ensemble) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 40);
+    return () => clearInterval(timer);
+  }, [ensemble]);
+
+  const guide = guideAt(ensemble, instrument, now + clockRef.current.offset);
+  const guidePanel = (
+    <GuidedEnsemble
+      session={ensemble}
+      guide={guide}
+      host={mode === "host"}
+      ready={soundReady && connected}
+      noteNames={notes.map((midi) => Tone.Frequency(midi, "midi").toNote())}
+      onStart={() => socketRef.current?.timeout(5000).emit("start-ensemble", (error, result) => {
+        if (error || !result?.ok) setError("Couldn't start the piece. Check your connection.");
+      })}
+      onStop={() => socketRef.current?.emit("stop-ensemble")}
+    />
+  );
 
   return (
     <main className="session-screen">
@@ -320,6 +375,7 @@ export default function Session({ mode, onBack }) {
               <p>Sound enabled · Keep this tab open.</p>
             )}
 
+            {guidePanel}
             <h2>Musicians · {players.length}</h2>
 
             {players.length === 0 ? (
@@ -356,12 +412,13 @@ export default function Session({ mode, onBack }) {
               </select>
             </label>
 
+            {guidePanel}
             <div className="octave-controls">
-              <button disabled={octave === octaves[instrument][0]} onClick={() => {
+              <button disabled={!!ensemble || octave === octaves[instrument][0]} onClick={() => {
                 releaseAll(); setOctave((value) => value - 1);
               }}>− Octave</button>
               <span aria-live="polite">Octave {octave}</span>
-              <button disabled={octave === octaves[instrument].at(-1)} onClick={() => {
+              <button disabled={!!ensemble || octave === octaves[instrument].at(-1)} onClick={() => {
                 releaseAll(); setOctave((value) => value + 1);
               }}>+ Octave</button>
             </div>
@@ -371,7 +428,11 @@ export default function Session({ mode, onBack }) {
                 <button
                   key={midi}
                   disabled={!connected}
-                  className={pressed.includes(midi) ? "note-held" : ""}
+                  className={[
+                    pressed.includes(midi) ? "note-held" : "",
+                    guide?.active.includes(index) ? "guide-now" : "",
+                    !guide?.active.length && guide?.next.includes(index) ? "guide-next" : "",
+                  ].join(" ")}
                   aria-label={`Play ${Tone.Frequency(midi, "midi").toNote()}`}
                   onPointerDown={(event) => {
                     if (event.button !== 0) return;

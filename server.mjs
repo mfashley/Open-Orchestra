@@ -53,6 +53,7 @@ function leave(socket) {
   if (!room) return;
 
   if (room.host === socket.id) {
+    clearTimeout(room.ensembleTimer);
     io.to(code).emit("room-ended");
 
     for (const id of room.players.keys()) {
@@ -143,6 +144,51 @@ io.on("connection", (socket) => {
     releaseNotes(socket);
     player.instrument = instrument;
     publish(socket.data.code);
+  });
+
+  socket.on("clock", (reply) => {
+    if (typeof reply === "function") reply(Date.now());
+  });
+
+  socket.on("get-ensemble", (reply) => {
+    if (typeof reply === "function") reply(rooms.get(socket.data.code)?.ensemble || null);
+  });
+
+  socket.on("start-ensemble", (reply) => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.host !== socket.id || typeof reply !== "function") return;
+    clearTimeout(room.ensembleTimer);
+    for (const id of room.players.keys()) {
+      const player = io.sockets.sockets.get(id);
+      if (player) releaseNotes(player);
+    }
+    const bpm = 90;
+    room.ensemble = { id: "first-light", title: "First Light", bpm,
+      startsAt: Date.now() + 4 * 60000 / bpm, beats: 32 };
+    io.to(socket.data.code).emit("ensemble", room.ensemble);
+    reply({ ok: true });
+    const code = socket.data.code;
+    room.ensembleTimer = setTimeout(() => {
+      if (rooms.get(code) !== room) return;
+      for (const id of room.players.keys()) {
+        const player = io.sockets.sockets.get(id);
+        if (player) releaseNotes(player);
+      }
+      room.ensemble = null;
+      io.to(code).emit("ensemble", null);
+    }, (4 + 32) * 60000 / bpm);
+  });
+
+  socket.on("stop-ensemble", () => {
+    const room = rooms.get(socket.data.code);
+    if (!room || room.host !== socket.id) return;
+    clearTimeout(room.ensembleTimer);
+    for (const id of room.players.keys()) {
+      const player = io.sockets.sockets.get(id);
+      if (player) releaseNotes(player);
+    }
+    room.ensemble = null;
+    io.to(socket.data.code).emit("ensemble", null);
   });
 
   socket.on("note-on", (data) => {
