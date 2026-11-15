@@ -6,14 +6,43 @@ import { instruments } from "./instruments";
 
 const roles = Object.keys(instruments);
 
-const labels = Object.fromEntries(
-  roles.map((id) => [id, instruments[id].notes]),
-);
+const steps = [0, 2, 4, 5, 7, 9, 11, 12];
+const keyCodes = ["KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK"];
+const octaves = {
+  piano: [3, 4, 5], violin: [4, 5, 6], flute: [5, 6],
+  trumpet: [3, 4, 5], cello: [2, 3, 4], xylophone: [4, 5, 6],
+};
+const defaultOctave = { piano: 4, violin: 4, flute: 5, trumpet: 4, cello: 2, xylophone: 5 };
 
 export default function Session({ mode, onBack }) {
   const socketRef = useRef(null);
   const engineRef = useRef(null);
   const startingRef = useRef(false);
+  const heldRef = useRef(new Map());
+  const soundingRef = useRef(new Map());
+  const [octave, setOctave] = useState(4);
+  const [pressed, setPressed] = useState([]);
+  const notes = steps.map((step) => (octave + 1) * 12 + step);
+
+  function releaseAll() {
+    heldRef.current.clear();
+    setPressed([]);
+    if (socketRef.current?.connected) socketRef.current.emit("release-notes");
+  }
+
+  function startNote(voice, midi) {
+    if (!socketRef.current?.connected || heldRef.current.has(voice)) return;
+    heldRef.current.set(voice, midi);
+    setPressed([...heldRef.current.values()]);
+    socketRef.current.emit("note-on", { voice, midi });
+  }
+
+  function stopNote(voice) {
+    if (!heldRef.current.has(voice)) return;
+    heldRef.current.delete(voice);
+    setPressed([...heldRef.current.values()]);
+    if (socketRef.current?.connected) socketRef.current.emit("note-off", voice);
+  }
 
   const [connected, setConnected] = useState(false);
   const [code, setCode] = useState("");
@@ -41,6 +70,10 @@ export default function Session({ mode, onBack }) {
     });
 
     socket.on("disconnect", () => {
+      heldRef.current.clear();
+      setPressed([]);
+      soundingRef.current.clear();
+      for (const role of roles) engineRef.current?.[role]?.releaseAll();
       setConnected(false);
       setJoined(false);
       setPlayers([]);
@@ -50,24 +83,37 @@ export default function Session({ mode, onBack }) {
     socket.on("players", setPlayers);
 
     socket.on("room-ended", () => {
+      heldRef.current.clear();
+      setPressed([]);
       setJoined(false);
       setPlayers([]);
       setError("The host closed the session.");
     });
 
-    socket.on("note", (event) => {
+    socket.on("note-on", (event) => {
       const definition = instruments[event.instrument];
-      const note = definition?.notes[event.index];
-
-      if (!note) return;
-
-      setActivity(`${event.name} played ${note} on ${definition.name}.`);
-
       const sampler = engineRef.current?.[event.instrument];
+      if (!definition || !sampler?.loaded) return;
+      const note = Tone.Frequency(event.midi, "midi").toNote();
+      const key = `${event.instrument}:${event.midi}`;
+      const owners = soundingRef.current.get(key) || new Set();
+      if (!owners.size) sampler.triggerAttack(note, Tone.now(), 0.7);
+      owners.add(`${event.id}:${event.voice}`);
+      soundingRef.current.set(key, owners);
+      setActivity(`${event.name} played ${note} on ${definition.name}.`);
+    });
 
-      if (!sampler?.loaded) return;
-
-      sampler.triggerAttackRelease(note, definition.duration, Tone.now(), 0.7);
+    socket.on("note-off", (event) => {
+      const key = `${event.instrument}:${event.midi}`;
+      const owners = soundingRef.current.get(key);
+      if (!owners) return;
+      owners.delete(`${event.id}:${event.voice}`);
+      if (!owners.size) {
+        engineRef.current?.[event.instrument]?.triggerRelease(
+          Tone.Frequency(event.midi, "midi").toNote(), Tone.now()
+        );
+        soundingRef.current.delete(key);
+      }
     });
 
     return () => {
@@ -161,6 +207,7 @@ export default function Session({ mode, onBack }) {
           } else {
             setCode(result.code);
             setInstrument("piano");
+            setOctave(4);
             setJoined(true);
           }
         },
@@ -168,9 +215,36 @@ export default function Session({ mode, onBack }) {
   }
 
   function chooseInstrument(value) {
+    releaseAll();
     setInstrument(value);
+    setOctave(defaultOctave[value]);
     socketRef.current?.emit("instrument", value);
   }
+
+  useEffect(() => {
+    function down(event) {
+      if (mode !== "join" || !joined || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.target.closest?.("input, select, textarea, [contenteditable=true]")) return;
+      const index = keyCodes.indexOf(event.code);
+      if (index < 0) return;
+      event.preventDefault();
+      startNote(`key-${event.code}`, notes[index]);
+    }
+    function up(event) { stopNote(`key-${event.code}`); }
+    function hidden() { if (document.hidden) releaseAll(); }
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", releaseAll);
+    window.addEventListener("pagehide", releaseAll);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", releaseAll);
+      window.removeEventListener("pagehide", releaseAll);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  });
 
   return (
     <main className="session-screen">
@@ -282,17 +356,49 @@ export default function Session({ mode, onBack }) {
               </select>
             </label>
 
-            <div className="room-pads">
-              {labels[instrument].map((label, index) => (
+            <div className="octave-controls">
+              <button disabled={octave === octaves[instrument][0]} onClick={() => {
+                releaseAll(); setOctave((value) => value - 1);
+              }}>− Octave</button>
+              <span aria-live="polite">Octave {octave}</span>
+              <button disabled={octave === octaves[instrument].at(-1)} onClick={() => {
+                releaseAll(); setOctave((value) => value + 1);
+              }}>+ Octave</button>
+            </div>
+
+            <div className="room-pads performance-pads">
+              {notes.map((midi, index) => (
                 <button
-                  key={label}
+                  key={midi}
                   disabled={!connected}
-                  onClick={() => socketRef.current?.emit("play", index)}
+                  className={pressed.includes(midi) ? "note-held" : ""}
+                  aria-label={`Play ${Tone.Frequency(midi, "midi").toNote()}`}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return;
+                    event.preventDefault();
+                    event.currentTarget.focus({ preventScroll: true });
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    startNote(`pointer-${event.pointerId}`, midi);
+                  }}
+                  onPointerUp={(event) => stopNote(`pointer-${event.pointerId}`)}
+                  onPointerCancel={(event) => stopNote(`pointer-${event.pointerId}`)}
+                  onLostPointerCapture={(event) => stopNote(`pointer-${event.pointerId}`)}
+                  onClick={(event) => {
+                    // Support assistive activation without pointer/key events.
+                    if (event.detail === 0 && !heldRef.current.size) {
+                      const voice = `assist-${midi}`;
+                      startNote(voice, midi);
+                      window.setTimeout(() => stopNote(voice), 350);
+                    }
+                  }}
                 >
-                  {label}
+                  <span>{Tone.Frequency(midi, "midi").toNote()}</span>
+                  <small>{"ASDFGHJK"[index]}</small>
                 </button>
               ))}
             </div>
+            <p>Hold notes. Use multiple fingers for chords, or A S D F G H J K.</p>
+            <button className="back-button" onClick={releaseAll}>Release all notes</button>
           </>
         )}
 

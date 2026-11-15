@@ -137,3 +137,52 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.octave-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 24px 0;
+}
+.octave-controls button {
+  padding: 12px;
+  border: 1px solid #bfa98e;
+  border-radius: 6px;
+  background: #f1e3cf;
+  color: #360d1c;
+}
+.room-pads.performance-pads {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.performance-pads button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.performance-pads small {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.performance-pads button.note-held {
+  background: #360d1c;
+  color: #fff4e3;
+  border-color: #360d1c;
+  transform: translateY(2px);
+}
+@media (max-width: 380px) {
+  .room-pads.performance-pads {
+    gap: 7px;
+  }
+  .performance-pads button {
+    font-size: 17px;
+    padding: 8px;
+  }
+}

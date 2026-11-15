@@ -32,7 +32,16 @@ function publish(code) {
   io.to(code).emit("players", [...room.players.values()]);
 }
 
+function releaseNotes(socket) {
+  const room = rooms.get(socket.data.code);
+  for (const event of (socket.data.held || new Map()).values()) {
+    if (room) io.to(room.host).emit("note-off", event);
+  }
+  socket.data.held = new Map();
+}
+
 function leave(socket) {
+  releaseNotes(socket);
   const code = socket.data.code;
   if (!code) return;
 
@@ -131,27 +140,47 @@ io.on("connection", (socket) => {
     const player = room?.players.get(socket.id);
     if (!player) return;
 
+    releaseNotes(socket);
     player.instrument = instrument;
     publish(socket.data.code);
   });
 
-  socket.on("play", (index) => {
-    if (!Number.isInteger(index) || index < 0 || index > 3) return;
-
+  socket.on("note-on", (data) => {
     const room = rooms.get(socket.data.code);
     const player = room?.players.get(socket.id);
-    if (!player) return;
+    if (!player || typeof data?.voice !== "string" || data.voice.length > 80) return;
+    const midi = data.midi;
+    const ranges = { piano: [48, 84], violin: [60, 96], flute: [72, 96],
+      trumpet: [48, 84], cello: [36, 72], xylophone: [60, 96] };
+    const [low, high] = ranges[player.instrument];
+    if (!Number.isInteger(midi) || midi < low || midi > high) return;
 
-    // Limit accidental floods of input.
+    socket.data.held ??= new Map();
+    if (socket.data.held.has(data.voice) || socket.data.held.size >= 16) return;
+
+    // A burst allowance supports chords; releases are never rate limited.
     const now = Date.now();
-    if (now - (socket.data.lastPlay || 0) < 60) return;
-    socket.data.lastPlay = now;
+    const bucket = socket.data.bucket || { tokens: 80, time: now };
+    bucket.tokens = Math.min(80, bucket.tokens + (now - bucket.time) * 0.08);
+    bucket.time = now;
+    socket.data.bucket = bucket;
+    if (bucket.tokens < 1) return;
+    bucket.tokens -= 1;
 
-    io.to(room.host).emit("note", {
-      ...player,
-      index,
-    });
+    const event = { ...player, voice: data.voice, midi };
+    socket.data.held.set(data.voice, event);
+    io.to(room.host).emit("note-on", event);
   });
+
+  socket.on("note-off", (voice) => {
+    const event = socket.data.held?.get(voice);
+    if (!event) return;
+    const room = rooms.get(socket.data.code);
+    socket.data.held.delete(voice);
+    if (room) io.to(room.host).emit("note-off", event);
+  });
+
+  socket.on("release-notes", () => releaseNotes(socket));
 
   socket.on("leave-room", () => leave(socket));
   socket.on("disconnect", () => leave(socket));
