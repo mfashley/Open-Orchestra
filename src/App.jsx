@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import Session from "./Session";
 
 export default function App() {
   const [opened, setOpened] = useState(false);
   const [finished, setFinished] = useState(false);
   const [message, setMessage] = useState("");
+  const [screen, setScreen] = useState("welcome");
 
   const audioRef = useRef(null);
   const timerRef = useRef(null);
@@ -29,36 +31,39 @@ export default function App() {
         const context = new AudioContextClass();
         audioRef.current = context;
 
-        context.resume().then(() => {
-          if (context.state === "closed") return;
+        context
+          .resume()
+          .then(() => {
+            if (context.state === "closed") return;
 
-          const oscillator = context.createOscillator();
-          const gain = context.createGain();
-          const now = context.currentTime;
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            const now = context.currentTime;
 
-          oscillator.type = "sine";
-          oscillator.frequency.value = 440;
+            oscillator.type = "sine";
+            oscillator.frequency.value = 440;
 
-          // A short, gentle Concert A with a fade in and out.
-          gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(0.12, now + 0.08);
-          gain.gain.setValueAtTime(0.12, now + 0.65);
-          gain.gain.linearRampToValueAtTime(0, now + 1.2);
+            // A short, gentle Concert A with a fade in and out.
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.12, now + 0.08);
+            gain.gain.setValueAtTime(0.12, now + 0.65);
+            gain.gain.linearRampToValueAtTime(0, now + 1.2);
 
-          oscillator.connect(gain);
-          gain.connect(context.destination);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
 
-          oscillator.start(now);
-          oscillator.stop(now + 1.25);
+            oscillator.start(now);
+            oscillator.stop(now + 1.25);
 
-          oscillator.onended = () => {
-            oscillator.disconnect();
-            gain.disconnect();
-            context.close().catch(() => {});
-          };
-        }).catch(() => {
-          // The entrance still works if audio is unavailable.
-        });
+            oscillator.onended = () => {
+              oscillator.disconnect();
+              gain.disconnect();
+              context.close().catch(() => {});
+            };
+          })
+          .catch(() => {
+            // The entrance still works if audio is unavailable.
+          });
       }
     } catch {
       // Sound is optional; never block the entrance.
@@ -67,13 +72,20 @@ export default function App() {
     setOpened(true);
 
     const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
+      "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    timerRef.current = window.setTimeout(() => {
-      setFinished(true);
-      createRef.current?.focus();
-    }, reducedMotion ? 50 : 1900);
+    timerRef.current = window.setTimeout(
+      () => {
+        setFinished(true);
+        createRef.current?.focus();
+      },
+      reducedMotion ? 50 : 1900,
+    );
+  }
+
+  if (screen !== "welcome") {
+    return <Session mode={screen} onBack={() => setScreen("welcome")} />;
   }
 
   return (
@@ -88,18 +100,16 @@ export default function App() {
           <h1>Poco Invites You To:</h1>
 
           <div className="session-options">
-            <article className="session-card">
+            <article className="session-card"> 
               <h2>Create a session</h2>
               <p>
-                Bring everyone together. Start a new session
-                and invite others to join.
+                Bring everyone together. Start a new session and invite others
+                to join.
               </p>
               <button
                 ref={createRef}
                 className="session-button"
-                onClick={() =>
-                  setMessage("Creating rooms is our next build step.")
-                }
+                onClick={() => setScreen("host")}
               >
                 Create a session
               </button>
@@ -108,14 +118,12 @@ export default function App() {
             <article className="session-card">
               <h2>Join a room</h2>
               <p>
-                Already have an invitation? Use your room
-                code or invite link to join the session.
+                Already have an invitation? Use your room code or invite link to
+                join the session.
               </p>
               <button
                 className="session-button"
-                onClick={() =>
-                  setMessage("Joining rooms is our next build step.")
-                }
+                onClick={() => setScreen("join")}
               >
                 Join a room
               </button>
@@ -144,11 +152,7 @@ export default function App() {
           />
 
           <div className="stand">
-            <img
-              src="/music stand1.png"
-              alt=""
-              draggable="false"
-            />
+            <img src="/music stand1.png" alt="" draggable="false" />
 
             <button
               className="tuning-button"
@@ -160,9 +164,7 @@ export default function App() {
               <span>Concert A</span>
             </button>
 
-            <p className="entrance-hint">
-              Tap the note to begin
-            </p>
+            <p className="entrance-hint">Tap the note to begin</p>
           </div>
         </div>
       )}

@@ -1,0 +1,5 @@
+Instrument samples from tonejs-instruments by Nicholaus P. Brosowsky and contributors.
+Source: https://github.com/nbrosowsky/tonejs-instruments
+Sample license: https://creativecommons.org/licenses/by/3.0/
+Original sources are listed in sample-source-info.txt.
+Poco maps and pitch-shifts samples for playable notes.
