@@ -1,0 +1,78 @@
+.song-library {
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid #c9ab7d;
+  border-radius: 10px;
+  background: #fff8ec;
+}
+.song-library .song-library-kicker {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-top: 0;
+}
+.song-library h2 {
+  font:
+    400 28px Georgia,
+    serif;
+  margin: 8px 0;
+}
+.song-library p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.song-library .song-library-note {
+  font-size: 11px;
+  color: #65544b;
+}
+.song-results {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+  display: grid;
+  gap: 14px;
+}
+.song-results li {
+  padding: 18px;
+  background: #fffdf8;
+  border: 1px solid #dfcdb3;
+  border-radius: 8px;
+}
+.song-result-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.song-result-title h3 {
+  margin: 0;
+  font:
+    400 22px Georgia,
+    serif;
+}
+.song-result-title span {
+  font-size: 10px;
+  padding: 5px 8px;
+  background: #f1e3cf;
+  border-radius: 4px;
+}
+.song-results .song-artist {
+  margin-top: 6px;
+  color: #65544b;
+}
+.song-results .song-details {
+  font-size: 11px;
+}
+.advanced-import {
+  margin: 24px 0;
+  border-top: 1px solid #d5c3a6;
+  padding-top: 18px;
+}
+.advanced-import > summary {
+  cursor: pointer;
+  font-size: 13px;
+  padding: 10px 0;
+}
+.advanced-import > summary:focus-visible {
+  outline: 3px solid #791d3e;
+  outline-offset: 3px;
+}

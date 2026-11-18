@@ -46,7 +46,8 @@ export default function GuidedEnsemble({
         guide && (
           <>
             <p className="guide-meta">
-              C major · {session.bpm} BPM ·{" "}
+              {session.source === "midi" ? "Concert pitch" : "C major"} ·{" "}
+              {session.bpm} BPM ·{" "}
               {guide.count
                 ? "Get ready"
                 : `Bar ${guide.bar} / ${guide.bars || 8}`}

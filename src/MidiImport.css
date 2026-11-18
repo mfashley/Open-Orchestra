@@ -1,0 +1,48 @@
+.midi-panel {
+  margin: 24px 0;
+  padding: 20px;
+  background: #f3eadc;
+  border: 1px solid #d1b58b;
+  border-radius: 10px;
+}
+.midi-panel .midi-kicker {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-top: 0;
+}
+.midi-panel h2 {
+  font:
+    400 26px Georgia,
+    serif;
+  margin: 8px 0;
+}
+.midi-panel p,
+.midi-panel li {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.midi-settings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.midi-track {
+  padding: 12px 0;
+  border-bottom: 1px solid #d5c3a6;
+}
+.midi-preview {
+  margin-top: 20px;
+  padding: 14px;
+  background: #fff8ec;
+  border-radius: 6px;
+}
+.midi-panel .midi-footnote {
+  font-size: 11px;
+  color: #65544b;
+}
+@media (max-width: 420px) {
+  .midi-settings {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

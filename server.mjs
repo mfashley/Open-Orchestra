@@ -1,3 +1,4 @@
+import { searchSongs, getSong } from "./song-library.mjs";
 import "dotenv/config";
 import {
   generateArrangement,
@@ -233,6 +234,86 @@ io.on("connection", (socket) => {
       reply({ ok: false, error: publicGenerationError(error) });
     } finally {
       room.generating = false;
+    }
+  });
+
+  socket.on("search-songs", (query, reply) => {
+    if (typeof reply !== "function") return;
+    if (typeof query !== "string" || query.length > 100)
+      return reply({ ok: false });
+    reply({ ok: true, songs: searchSongs(query) });
+  });
+
+  socket.on("select-song", (id, reply) => {
+    if (typeof reply !== "function") return;
+    const room = rooms.get(socket.data.code);
+    if (!room || room.host !== socket.id)
+      return reply({ ok: false, error: "Only the host can choose a song." });
+    if (room.ensemble || room.generating)
+      return reply({
+        ok: false,
+        error:
+          "Stop the current piece and wait for any composition before choosing a song.",
+      });
+    const song = typeof id === "string" ? getSong(id) : null;
+    if (!song)
+      return reply({
+        ok: false,
+        error: "That arrangement is not in the Poco collection.",
+      });
+    room.arrangement = song.arrangement;
+    room.source = "library";
+    io.to(socket.data.code).emit("selection", {
+      title: room.arrangement.title,
+      source: room.source,
+    });
+    reply({ ok: true, title: room.arrangement.title });
+  });
+
+  socket.on("import-arrangement", (input, reply) => {
+    if (typeof reply !== "function") return;
+    const room = rooms.get(socket.data.code);
+    if (!room || room.host !== socket.id)
+      return reply({ ok: false, error: "Only the host can import music." });
+    if (room.ensemble || room.generating)
+      return reply({
+        ok: false,
+        error:
+          "Stop the current piece and wait for composition to finish before importing.",
+      });
+    try {
+      const arrangement = validateArrangement(input);
+      // Keep imported guidance compatible with the current single-voice score.
+      for (const [instrument, part] of Object.entries(arrangement.parts)) {
+        for (let index = 0; index < part.events.length; index++) {
+          const event = part.events[index];
+          if ((event.beat * 2) % 1 || (event.duration * 2) % 1)
+            throw new Error("Import timing must use an eighth-note grid.");
+          if (
+            index &&
+            event.beat <
+              part.events[index - 1].beat +
+                part.events[index - 1].duration -
+                0.000001
+          )
+            throw new Error(
+              "Import events must not overlap within an instrument.",
+            );
+          if (event.notes.length > (instrument === "piano" ? 3 : 1))
+            throw new Error(
+              "Too many notes for this instrument's practice part.",
+            );
+        }
+      }
+      room.arrangement = arrangement;
+      room.source = "midi";
+      io.to(socket.data.code).emit("selection", {
+        title: arrangement.title,
+        source: room.source,
+      });
+      reply({ ok: true, title: arrangement.title });
+    } catch (error) {
+      reply({ ok: false, error: error.message || "Invalid imported music." });
     }
   });
 

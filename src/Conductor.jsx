@@ -96,7 +96,11 @@ export default function Conductor({
         Selected: <strong>{selection.title}</strong> ·{" "}
         {selection.source === "gemini"
           ? "Gemini composition"
-          : "Prepared piece"}
+          : selection.source === "midi"
+            ? "Imported MIDI"
+            : selection.source === "library"
+              ? "Song library"
+              : "Prepared piece"}
       </p>
       <button
         className="back-button"

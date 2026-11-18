@@ -1,3 +1,5 @@
+import SongLibrary from "./SongLibrary";
+import MidiImport from "./MidiImport";
 import Conductor from "./Conductor";
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
@@ -56,7 +58,12 @@ export default function Session({ mode, onBack }) {
   }
 
   function startNote(voice, midi) {
-    if (!socketRef.current?.connected || heldRef.current.has(voice)) return;
+    if (
+      !Number.isInteger(midi) ||
+      !socketRef.current?.connected ||
+      heldRef.current.has(voice)
+    )
+      return;
     heldRef.current.set(voice, midi);
     setPressed([...heldRef.current.values()]);
     socketRef.current.emit("note-on", { voice, midi });
@@ -441,6 +448,12 @@ export default function Session({ mode, onBack }) {
               <p>Sound enabled · Keep this tab open.</p>
             )}
 
+            <SongLibrary
+              socket={socketRef.current}
+              connected={connected}
+              playing={!!ensemble}
+              soundReady={soundReady}
+            />
             <Conductor
               socket={socketRef.current}
               selection={selection}
@@ -448,6 +461,14 @@ export default function Session({ mode, onBack }) {
               connected={connected}
               players={players}
             />
+            <details className="advanced-import">
+              <summary>Advanced · Import your own MIDI file</summary>
+              <MidiImport
+                socket={socketRef.current}
+                playing={!!ensemble}
+                connected={connected}
+              />
+            </details>
             {guidePanel}
             <h2>Musicians · {players.length}</h2>
 
@@ -487,8 +508,7 @@ export default function Session({ mode, onBack }) {
             {ensemble && !ensemble.arrangement?.parts[instrument] && (
               <p>
                 This piece has no {instruments[instrument].name} part. Choose an
-                instrument that was connected when the host composed it, or play
-                freely.
+                instrument assigned to this piece, or play freely.
               </p>
             )}
 
